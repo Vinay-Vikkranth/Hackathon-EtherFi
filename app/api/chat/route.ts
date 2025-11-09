@@ -2,8 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { getDeFiSummary } from '@/lib/defiLlamaService';
 
+// Get API key from environment variables only
+const getApiKey = () => {
+  return process.env.ANTHROPIC_API_KEY || process.env.NEXT_PUBLIC_ANTHROPIC_API_KEY || '';
+};
+
 const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY || '',
+  apiKey: getApiKey(),
 });
 
 // Fetch live DeFi data for chatbot context
@@ -83,6 +88,24 @@ Remember: You're teaching complete beginners. Break down concepts into bite-size
 
 export async function POST(req: NextRequest) {
   try {
+    // Check if API key exists
+    const apiKey = getApiKey();
+    console.log('=== FINNY DEBUG ===');
+    console.log('API Key length:', apiKey?.length);
+    console.log('API Key prefix:', apiKey?.substring(0, 15));
+    console.log('API Key suffix:', apiKey?.substring(apiKey.length - 10));
+    console.log('Full API Key:', apiKey);
+    console.log('==================');
+    
+    if (!apiKey || apiKey.length < 10) {
+      console.error('ANTHROPIC_API_KEY is not set or invalid');
+      return NextResponse.json({ 
+        message: "Finny's brain isn't connected! The API key is missing. 🔑",
+        success: false,
+        error: 'API key not configured' 
+      }, { status: 500 });
+    }
+
     const { messages } = await req.json();
 
     // Fetch live DeFi data to inject into the conversation
@@ -91,8 +114,9 @@ export async function POST(req: NextRequest) {
     // Combine system prompt with live data
     const enhancedSystemPrompt = `${FINNY_SYSTEM_PROMPT}\n\n${liveContext}`;
 
+    console.log('Calling Claude API with model: claude-3-5-sonnet-20241022');
     const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-3-5-sonnet-20241022',
       max_tokens: 500,
       system: enhancedSystemPrompt,
       messages: messages,
@@ -102,6 +126,7 @@ export async function POST(req: NextRequest) {
       ? response.content[0].text 
       : '';
 
+    console.log('Claude API responded successfully');
     return NextResponse.json({ 
       message: assistantMessage,
       success: true 
@@ -109,10 +134,17 @@ export async function POST(req: NextRequest) {
 
   } catch (error: any) {
     console.error('Claude API Error:', error);
+    console.error('Error details:', {
+      message: error.message,
+      status: error.status,
+      type: error.type
+    });
+    
     return NextResponse.json({ 
       message: "Oops! I'm having trouble thinking right now. Can you try asking again? 🤔",
       success: false,
-      error: error.message 
+      error: error.message,
+      details: error.type || 'unknown'
     }, { status: 500 });
   }
 }

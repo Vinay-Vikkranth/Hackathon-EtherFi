@@ -6,3 +6,5 @@ export { default as InfoBox } from './InfoBox';
 export { default as LiveDeFiDashboard } from './LiveDeFiDashboard';
 export { default as UserInsightsPanel } from './UserInsightsPanel';
 export { default as EthereumPriceChart } from './EthereumPriceChart';
+export { default as UserEarningsCalculator } from './UserEarningsCalculator';
+export { default as ProtocolHealthIndicator } from './ProtocolHealthIndicator';

@@ -8,8 +8,13 @@ import {
   DollarSign,
   Zap,
   Shield,
+  Users,
+  Fuel,
+  CheckCircle,
 } from "lucide-react";
 import EthereumPriceChart from "./EthereumPriceChart";
+import UserEarningsCalculator from "./UserEarningsCalculator";
+import ProtocolHealthIndicator from "./ProtocolHealthIndicator";
 
 interface DeFiMetrics {
   etherfi: any;
@@ -20,6 +25,25 @@ interface DeFiMetrics {
   etherfiYields: any[];
   topProtocols: any[];
   totalTVL: number;
+  validators?: {
+    total: number;
+    active: number;
+  };
+  capacity?: {
+    current: number;
+    max: number | null;
+    utilizationPercent: number;
+  };
+}
+
+interface GasEstimates {
+  success: boolean;
+  estimates: {
+    stake: { eth: number; usd: number; gwei: number };
+    unstake: { eth: number; usd: number; gwei: number };
+    wrap: { eth: number; usd: number; gwei: number };
+    claim: { eth: number; usd: number; gwei: number };
+  };
 }
 
 interface LiveDashboardProps {
@@ -30,6 +54,7 @@ export default function LiveDeFiDashboard({
   userStakedAmount = 0,
 }: LiveDashboardProps) {
   const [metrics, setMetrics] = useState<DeFiMetrics | null>(null);
+  const [gasEstimates, setGasEstimates] = useState<GasEstimates | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
@@ -37,15 +62,24 @@ export default function LiveDeFiDashboard({
 
   const fetchMetrics = async () => {
     try {
-      const response = await fetch("/api/defi/summary");
-      const result = await response.json();
+      const [metricsResponse, gasResponse] = await Promise.all([
+        fetch("/api/defi/summary"),
+        fetch("/api/defi/gas-prices"),
+      ]);
 
-      if (result.success) {
-        setMetrics(result.data);
+      const metricsResult = await metricsResponse.json();
+      const gasResult = await gasResponse.json();
+
+      if (metricsResult.success) {
+        setMetrics(metricsResult.data);
         setLastUpdate(new Date());
         setError(null);
       } else {
-        setError(result.error || "Failed to fetch data");
+        setError(metricsResult.error || "Failed to fetch data");
+      }
+
+      if (gasResult.success) {
+        setGasEstimates(gasResult);
       }
     } catch (err) {
       setError("Network error - unable to fetch DeFi data");
@@ -177,6 +211,27 @@ export default function LiveDeFiDashboard({
       {/* Ethereum Price Chart - Featured Section */}
       <EthereumPriceChart />
 
+      {/* User Earnings Calculator */}
+      {userStakedAmount > 0 && metrics && (
+        <UserEarningsCalculator
+          stakedAmount={userStakedAmount}
+          currentAPY={metrics.etherfiYields?.[0]?.apy || 3.5}
+          ethPrice={metrics.ethPrices.eth}
+        />
+      )}
+
+      {/* Protocol Health Indicator */}
+      {metrics && (
+        <ProtocolHealthIndicator
+          ethPrice={metrics.ethPrices.eth}
+          eethPrice={metrics.ethPrices.eeth}
+          totalValidators={metrics.validators?.total}
+          activeValidators={metrics.validators?.active}
+          tvl={metrics.etherfi.tvl || 0}
+          maxCapacity={metrics.capacity?.max || undefined}
+        />
+      )}
+
       {/* Key Metrics Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* ETH Price */}
@@ -233,6 +288,74 @@ export default function LiveDeFiDashboard({
             {(metrics.etherfiYields?.[0]?.apy || 0).toFixed(2)}%
           </p>
         </div>
+
+        {/* eETH/ETH Ratio - NEW */}
+        <div className="bg-gradient-to-br from-cyan-900/30 to-blue-900/30 backdrop-blur-xl rounded-xl border border-cyan-500/30 p-6">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-gray-400 text-sm">eETH/ETH Ratio</p>
+            <Activity className="w-5 h-5 text-cyan-400" />
+          </div>
+          <p className="text-3xl font-bold text-white">
+            {metrics.ethPrices.eeth && metrics.ethPrices.eth
+              ? (metrics.ethPrices.eeth / metrics.ethPrices.eth).toFixed(4)
+              : "1.0000"}
+          </p>
+          <div className="flex items-center gap-2 mt-2">
+            {metrics.ethPrices.eeth &&
+            metrics.ethPrices.eth &&
+            Math.abs(metrics.ethPrices.eeth / metrics.ethPrices.eth - 1) <
+              0.001 ? (
+              <>
+                <CheckCircle className="w-4 h-4 text-green-500" />
+                <span className="text-sm text-green-400">Healthy Peg</span>
+              </>
+            ) : (
+              <>
+                <Activity className="w-4 h-4 text-yellow-500" />
+                <span className="text-sm text-yellow-400">Monitoring</span>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Total Validators - NEW */}
+        <div className="bg-gradient-to-br from-indigo-900/30 to-purple-900/30 backdrop-blur-xl rounded-xl border border-indigo-500/30 p-6">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-gray-400 text-sm">Total Validators</p>
+            <Users className="w-5 h-5 text-indigo-400" />
+          </div>
+          <p className="text-3xl font-bold text-white">
+            {metrics.validators?.total
+              ? metrics.validators.total.toLocaleString()
+              : "N/A"}
+          </p>
+          <div className="flex items-center gap-2 mt-2">
+            <span className="text-sm text-gray-400">
+              {metrics.validators?.active
+                ? metrics.validators.active.toLocaleString()
+                : 0}{" "}
+              active
+            </span>
+          </div>
+        </div>
+
+        {/* Gas Costs - NEW */}
+        {gasEstimates && (
+          <div className="bg-gradient-to-br from-orange-900/30 to-red-900/30 backdrop-blur-xl rounded-xl border border-orange-500/30 p-6">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-gray-400 text-sm">Gas Costs</p>
+              <Fuel className="w-5 h-5 text-orange-400" />
+            </div>
+            <p className="text-3xl font-bold text-white">
+              ${gasEstimates.estimates.stake.usd.toFixed(2)}
+            </p>
+            <div className="flex items-center gap-2 mt-2">
+              <span className="text-sm text-gray-400">
+                to stake ({gasEstimates.estimates.stake.gwei} gwei)
+              </span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* User Personalized Insights */}

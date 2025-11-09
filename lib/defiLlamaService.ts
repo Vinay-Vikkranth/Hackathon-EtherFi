@@ -264,6 +264,15 @@ export async function getDeFiSummary(): Promise<{
   etherfiYields: YieldPool[];
   topProtocols: Protocol[];
   totalTVL: number;
+  validators?: {
+    total: number;
+    active: number;
+  };
+  capacity?: {
+    current: number;
+    max: number | null;
+    utilizationPercent: number;
+  };
 }> {
   try {
     const [etherfi, ethPrices, etherfiYields, allProtocols] = await Promise.all([
@@ -278,6 +287,22 @@ export async function getDeFiSummary(): Promise<{
       .sort((a, b) => (b.tvl || 0) - (a.tvl || 0))
       .slice(0, 10);
 
+    // Extract validator data from Ether.fi response if available
+    // Note: This is estimated data as DeFiLlama doesn't provide validator counts
+    // In production, you'd fetch this from Ether.fi's official API
+    const estimatedValidators = Math.floor((etherfi.tvl || 0) / 32000000); // ~32 ETH per validator
+    const validators = {
+      total: estimatedValidators,
+      active: Math.floor(estimatedValidators * 0.995), // Assume 99.5% uptime
+    };
+
+    // Capacity estimation (Ether.fi typically doesn't have a hard cap)
+    const capacity = {
+      current: etherfi.tvl || 0,
+      max: null, // No maximum capacity for Ether.fi
+      utilizationPercent: 0,
+    };
+
     // Calculate total TVL across all protocols
     const totalTVL = allProtocols.reduce((sum, p) => sum + (p.tvl || 0), 0);
 
@@ -287,6 +312,8 @@ export async function getDeFiSummary(): Promise<{
       etherfiYields,
       topProtocols,
       totalTVL,
+      validators,
+      capacity,
     };
   } catch (error) {
     console.error('Error fetching DeFi summary:', error);
