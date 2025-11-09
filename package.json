@@ -1,0 +1,37 @@
+{
+  "name": "liquid-staking-demo",
+  "version": "1.0.0",
+  "description": "Educational demo for liquid staking mechanics - Not financial advice",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "hardhat:node": "hardhat node",
+    "hardhat:deploy": "hardhat run scripts/deploy.js --network localhost",
+    "hardhat:compile": "hardhat compile"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.68.0",
+    "@openzeppelin/contracts": "^5.4.0",
+    "ethers": "^6.9.0",
+    "lucide-react": "^0.553.0",
+    "next": "^14.0.4",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "@types/node": "^20.10.5",
+    "@types/react": "^18.2.45",
+    "@types/react-dom": "^18.2.18",
+    "autoprefixer": "^10.4.16",
+    "eslint": "^8.56.0",
+    "eslint-config-next": "^14.0.4",
+    "hardhat": "^2.19.4",
+    "postcss": "^8.4.32",
+    "tailwindcss": "^3.3.6",
+    "typescript": "^5.3.3"
+  }
+}
