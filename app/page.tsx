@@ -1,10 +1,30 @@
-'use client';
+"use client";
 
-import { ProtocolStats } from '@/components/ProtocolStats';
-import { WalletConnection } from '@/components/WalletConnection';
-import { DemoPortfolio } from '@/components/DemoPortfolio';
-import { AIAssistant } from '@/components/AIAssistant';
-import { Sparkles, BarChart3, Menu } from 'lucide-react';
+import { ProtocolStats } from "@/components/ProtocolStats";
+import { WalletConnection } from "@/components/WalletConnection";
+import { DemoPortfolio } from "@/components/DemoPortfolio";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { Sparkles, BarChart3, Menu } from "lucide-react";
+import dynamic from "next/dynamic";
+
+// Dynamically import AIAssistant to reduce initial bundle size
+const AIAssistant = dynamic(
+  () =>
+    import("@/components/AIAssistant").then((mod) => ({
+      default: mod.AIAssistant,
+    })),
+  {
+    loading: () => (
+      <div className="bg-[#2a2a2a] rounded-lg border border-[#3a3a3a] h-[600px] flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-[#a0a0a0]">Loading AI Assistant...</p>
+        </div>
+      </div>
+    ),
+    ssr: false,
+  }
+);
 
 export default function Home() {
   return (
@@ -18,8 +38,12 @@ export default function Home() {
                 <Sparkles className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-white">Ether.fi Dashboard</h1>
-                <p className="text-sm text-[#a0a0a0]">Real-time protocol analytics with AI assistant</p>
+                <h1 className="text-2xl font-bold text-white">
+                  Ether.fi Dashboard
+                </h1>
+                <p className="text-sm text-[#a0a0a0]">
+                  Real-time protocol analytics with AI assistant
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -34,7 +58,9 @@ export default function Home() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Wallet Connection */}
         <div className="mb-6">
-          <WalletConnection />
+          <ErrorBoundary>
+            <WalletConnection />
+          </ErrorBoundary>
         </div>
 
         {/* Protocol Stats - Real Data from DeFiLlama */}
@@ -42,14 +68,20 @@ export default function Home() {
           <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
             <BarChart3 className="w-5 h-5 text-purple-400" />
             Protocol Statistics
-            <span className="ml-2 px-2 py-1 bg-green-500/20 text-green-400 text-xs rounded">LIVE</span>
+            <span className="ml-2 px-2 py-1 bg-green-500/20 text-green-400 text-xs rounded">
+              LIVE
+            </span>
           </h2>
-          <ProtocolStats />
+          <ErrorBoundary>
+            <ProtocolStats />
+          </ErrorBoundary>
         </div>
 
         {/* Demo Portfolio */}
         <div className="mb-8">
-          <DemoPortfolio />
+          <ErrorBoundary>
+            <DemoPortfolio />
+          </ErrorBoundary>
         </div>
 
         {/* AI Assistant */}
@@ -58,24 +90,41 @@ export default function Home() {
             <Sparkles className="w-5 h-5 text-purple-400" />
             AI Assistant
           </h2>
-          <AIAssistant
-            userContext={{
-              stakedETH: 10.5,
-              eETHBalance: 10.52,
-              totalRewards: 0.15,
-              apy: 3.8,
-            }}
-          />
+          <ErrorBoundary>
+            <AIAssistant
+              userContext={{
+                stakedETH: 10.5,
+                eETHBalance: 10.52,
+                totalRewards: 0.15,
+                apy: 3.8,
+              }}
+            />
+          </ErrorBoundary>
         </div>
 
         {/* Footer Info */}
         <div className="bg-[#2a2a2a] border border-[#3a3a3a] rounded-lg p-4 mb-8">
-          <h3 className="font-semibold text-white mb-2">About This Dashboard</h3>
+          <h3 className="font-semibold text-white mb-2">
+            About This Dashboard
+          </h3>
           <ul className="text-sm text-[#a0a0a0] space-y-1">
-            <li>✅ <strong className="text-white">Real Protocol Data:</strong> TVL, fees, and revenue fetched live from DeFiLlama API</li>
-            <li>🔗 <strong className="text-white">Wallet Integration:</strong> Connect your MetaMask wallet to view your real ETH balance</li>
-            <li>📈 <strong className="text-white">Demo Portfolio:</strong> Example user dashboard showing staking data (clearly marked as demo)</li>
-            <li>🤖 <strong className="text-white">AI Assistant:</strong> Powered by Ollama (local LLM) - answers questions and calculates projections</li>
+            <li>
+              ✅ <strong className="text-white">Real Protocol Data:</strong>{" "}
+              TVL, fees, and revenue fetched live from DeFiLlama API
+            </li>
+            <li>
+              🔗 <strong className="text-white">Wallet Integration:</strong>{" "}
+              Connect your MetaMask wallet to view your real ETH balance
+            </li>
+            <li>
+              📈 <strong className="text-white">Demo Portfolio:</strong> Example
+              user dashboard showing staking data (clearly marked as demo)
+            </li>
+            <li>
+              🤖 <strong className="text-white">AI Assistant:</strong> Powered
+              by Ollama (local LLM) - answers questions and calculates
+              projections
+            </li>
           </ul>
         </div>
       </div>
