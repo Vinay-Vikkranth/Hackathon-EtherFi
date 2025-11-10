@@ -1,15 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Anthropic from '@anthropic-ai/sdk';
 import { getDeFiSummary } from '@/lib/defiLlamaService';
 
-// Get API key from environment variables only
-const getApiKey = () => {
-  return process.env.ANTHROPIC_API_KEY || process.env.NEXT_PUBLIC_ANTHROPIC_API_KEY || '';
+type ChatMessage = {
+  role: 'user' | 'assistant';
+  content: string;
 };
-
-const anthropic = new Anthropic({
-  apiKey: getApiKey(),
-});
 
 // Fetch live DeFi data for chatbot context
 async function getLiveDeFiContext(): Promise<string> {
@@ -88,63 +83,42 @@ Remember: You're teaching complete beginners. Break down concepts into bite-size
 
 export async function POST(req: NextRequest) {
   try {
-    // Check if API key exists
-    const apiKey = getApiKey();
-    console.log('=== FINNY DEBUG ===');
-    console.log('API Key length:', apiKey?.length);
-    console.log('API Key prefix:', apiKey?.substring(0, 15));
-    console.log('API Key suffix:', apiKey?.substring(apiKey.length - 10));
-    console.log('Full API Key:', apiKey);
-    console.log('==================');
-    
-    if (!apiKey || apiKey.length < 10) {
-      console.error('ANTHROPIC_API_KEY is not set or invalid');
-      return NextResponse.json({ 
-        message: "Finny's brain isn't connected! The API key is missing. 🔑",
-        success: false,
-        error: 'API key not configured' 
-      }, { status: 500 });
-    }
-
     const { messages } = await req.json();
-
+    const chatMessages: ChatMessage[] = messages;
     // Fetch live DeFi data to inject into the conversation
     const liveContext = await getLiveDeFiContext();
-
     // Combine system prompt with live data
     const enhancedSystemPrompt = `${FINNY_SYSTEM_PROMPT}\n\n${liveContext}`;
 
-    console.log('Calling Claude API with model: claude-3-5-sonnet-20241022');
-    const response = await anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
-      max_tokens: 500,
-      system: enhancedSystemPrompt,
-      messages: messages,
+    // Combine all messages into a single prompt for Llama
+    const userPrompt = chatMessages.map((m: ChatMessage) => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`).join('\n');
+    const prompt = `${enhancedSystemPrompt}\n${userPrompt}\nAssistant:`;
+
+    // Call local Llama (Ollama) server
+    const llamaRes = await fetch('http://localhost:11434/api/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'llama3', // Change to your local model name if needed
+        prompt,
+        stream: false
+      })
     });
 
-    const assistantMessage = response.content[0].type === 'text' 
-      ? response.content[0].text 
-      : '';
+    const data = await llamaRes.json();
+    const assistantMessage = data.response || "Sorry, I couldn't generate a response.";
 
-    console.log('Claude API responded successfully');
-    return NextResponse.json({ 
+    return NextResponse.json({
       message: assistantMessage,
-      success: true 
+      success: true
     });
 
   } catch (error: any) {
-    console.error('Claude API Error:', error);
-    console.error('Error details:', {
-      message: error.message,
-      status: error.status,
-      type: error.type
-    });
-    
-    return NextResponse.json({ 
+    console.error('Llama API Error:', error);
+    return NextResponse.json({
       message: "Oops! I'm having trouble thinking right now. Can you try asking again? 🤔",
       success: false,
-      error: error.message,
-      details: error.type || 'unknown'
+      error: error.message
     }, { status: 500 });
   }
 }
